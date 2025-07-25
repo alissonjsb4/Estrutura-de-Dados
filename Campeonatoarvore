@@ -1,0 +1,148 @@
+# Título: Sistema de Gerenciamento de Campeonato com Árvore AVL
+# Descrição: Protótipo de um sistema para gerenciar times em um campeonato de jogos.
+# Utiliza uma Árvore AVL para organizar os times por ranking, garantindo operações eficientes.
+# Possui um menu interativo para inserir, remover, buscar times e determinar oponentes.
+
+class Time:
+    def __init__(self, nome, ranking):
+        self.nome = nome
+        self.ranking = ranking
+    def __str__(self):
+        return f"Time: {self.nome} | Ranking: {self.ranking}"
+
+class Node:
+    def __init__(self, time):
+        self.time = time
+        self.height = 1
+        self.left = None
+        self.right = None
+
+class AVLTree:
+    def __init__(self):
+        self.root = None
+    
+    def get_height(self, node): return node.height if node else 0
+    def get_balance(self, node): return self.get_height(node.left) - self.get_height(node.right) if node else 0
+    def right_rotate(self, z):
+        y = z.left; T3 = y.right; y.right = z; z.left = T3
+        z.height = 1 + max(self.get_height(z.left), self.get_height(z.right))
+        y.height = 1 + max(self.get_height(y.left), self.get_height(y.right))
+        return y
+    def left_rotate(self, z):
+        y = z.right; T2 = y.left; y.left = z; z.right = T2
+        z.height = 1 + max(self.get_height(z.left), self.get_height(z.right))
+        y.height = 1 + max(self.get_height(y.left), self.get_height(y.right))
+        return y
+
+    def inserir(self, node, time):
+        if not node: return Node(time)
+        if time.ranking < node.time.ranking: node.left = self.inserir(node.left, time)
+        else: node.right = self.inserir(node.right, time)
+        node.height = 1 + max(self.get_height(node.left), self.get_height(node.right))
+        balance = self.get_balance(node)
+        if balance > 1 and time.ranking < node.left.time.ranking: return self.right_rotate(node)
+        if balance < -1 and time.ranking > node.right.time.ranking: return self.left_rotate(node)
+        if balance > 1 and time.ranking > node.left.time.ranking:
+            node.left = self.left_rotate(node.left)
+            return self.right_rotate(node)
+        if balance < -1 and time.ranking < node.right.time.ranking:
+            node.right = self.right_rotate(node.right)
+            return self.left_rotate(node)
+        return node
+
+    def remover(self, node, ranking):
+        if not node: return node
+        if ranking < node.time.ranking: node.left = self.remover(node.left, ranking)
+        elif ranking > node.time.ranking: node.right = self.remover(node.right, ranking)
+        else:
+            if not node.left: return node.right
+            elif not node.right: return node.left
+            temp_node = node.right
+            while temp_node.left: temp_node = temp_node.left
+            node.time = temp_node.time
+            node.right = self.remover(node.right, temp_node.time.ranking)
+        if not node: return node
+        node.height = 1 + max(self.get_height(node.left), self.get_height(node.right))
+        balance = self.get_balance(node)
+        if balance > 1 and self.get_balance(node.left) >= 0: return self.right_rotate(node)
+        if balance < -1 and self.get_balance(node.right) <= 0: return self.left_rotate(node)
+        if balance > 1 and self.get_balance(node.left) < 0:
+            node.left = self.left_rotate(node.left)
+            return self.right_rotate(node)
+        if balance < -1 and self.get_balance(node.right) > 0:
+            node.right = self.right_rotate(node.right)
+            return self.left_rotate(node)
+        return node
+
+    def buscar_por_ranking(self, node, ranking):
+        if not node or ranking == node.time.ranking: return node
+        if ranking < node.time.ranking: return self.buscar_por_ranking(node.left, ranking)
+        return self.buscar_por_ranking(node.right, ranking)
+
+    def buscar_por_nome(self, node, nome):
+        if not node: return None
+        if nome.lower() == node.time.nome.lower(): return node.time
+        found_in_left = self.buscar_por_nome(node.left, nome)
+        return found_in_left if found_in_left else self.buscar_por_nome(node.right, nome)
+
+    def achar_combate(self, ranking_base):
+        node_base = self.buscar_por_ranking(self.root, ranking_base)
+        if not node_base:
+            print(f"\nErro interno: Time com ranking {ranking_base} não encontrado para análise.")
+            return
+        print(f"\nAnalisando oponentes para o time: {node_base.time.nome}")
+        if node_base.left and node_base.right:
+            filho_esq = node_base.left.time; filho_dir = node_base.right.time
+            print("="*30 + "\n  BATALHA ENTRE FILHOS!\n" + f"  {filho_esq.nome} vs {filho_dir.nome}\n" + "="*30)
+        elif node_base.left:
+            filho_esq = node_base.left.time
+            print("="*30 + "\n  BATALHA CONTRA FILHO ÚNICO!\n" + f"  {node_base.time.nome} vs {filho_esq.nome}\n" + "="*30)
+        elif node_base.right:
+            filho_dir = node_base.right.time
+            print("="*30 + "\n  BATALHA CONTRA FILHO ÚNICO!\n" + f"  {node_base.time.nome} vs {filho_dir.nome}\n" + "="*30)
+        else:
+            print("Este time não possui filhos e, portanto, não tem um combate direto agendado.")
+
+def menu():
+    campeonato = AVLTree()
+    times_iniciais = [
+        Time("LOUD", 5), Time("Fúria", 8), Time("MIBR", 11), Time("Pain Gaming", 1),
+        Time("INTZ", 15), Time("Fluxo", 9), Time("Keyd Stars", 12), Time("RED Canids", 4)
+    ]
+    for time in times_iniciais:
+        campeonato.root = campeonato.inserir(campeonato.root, time)
+    while True:
+        print("\n===== SISTEMA DE CAMPEONATO (AVL) =====")
+        print("1. Inserir Novo Time\n2. Remover Time\n3. Buscar Time pelo Nome\n4. Buscar Time pelo Ranking\n5. Descobrir oponente pelo nome\n6. Sair")
+        opcao = input("Escolha uma opção: ")
+        if opcao == "1":
+            nome = input("Digite o nome do time: ")
+            try:
+                ranking = int(input("Digite o ranking: "))
+                if campeonato.buscar_por_ranking(campeonato.root, ranking): print("Erro: Já existe um time com este ranking.")
+                else: campeonato.root = campeonato.inserir(campeonato.root, Time(nome, ranking)); print("Time inserido com sucesso!")
+            except ValueError: print("Erro: Ranking deve ser um número inteiro.")
+        elif opcao == "2":
+            try:
+                ranking = int(input("Digite o ranking do time a ser removido: "))
+                if not campeonato.buscar_por_ranking(campeonato.root, ranking): print("Erro: Time com este ranking não existe.")
+                else: campeonato.root = campeonato.remover(campeonato.root, ranking); print("Time removido com sucesso.")
+            except ValueError: print("Erro: Ranking deve ser um número inteiro.")
+        elif opcao == "3":
+            nome = input("Digite o nome do Time: "); time_encontrado = campeonato.buscar_por_nome(campeonato.root, nome)
+            print(f"\nResultado: {time_encontrado}" if time_encontrado else "\nResultado: Time não encontrado.")
+        elif opcao == "4":
+            try:
+                ranking = int(input("Digite o ranking do Time: ")); node_encontrado = campeonato.buscar_por_ranking(campeonato.root, ranking)
+                print(f"\nResultado: {node_encontrado.time}" if node_encontrado else "\nResultado: Time não encontrado.")
+            except ValueError: print("Erro: Ranking deve ser um número inteiro.")
+        elif opcao == "5":
+            nome_base = input("Digite o nome do time para descobrir o oponente: ")
+            time_encontrado = campeonato.buscar_por_nome(campeonato.root, nome_base)
+            if time_encontrado: campeonato.achar_combate(time_encontrado.ranking)
+            else: print("Time não encontrado.")
+        elif opcao == "6": print("Saindo do sistema..."); break
+        else: print("Opção inválida. Tente novamente.")
+
+if __name__ == "__main__":
+    menu()
